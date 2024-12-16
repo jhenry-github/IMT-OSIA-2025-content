@@ -243,7 +243,55 @@ plt.show()
 
 ```
 
-When you look at the plot that way, you may find that k-means did not do a good job. It may look like some cluster centers are very close from each other. In short, the clusters may not look to be at the spot where you would have put them, if you had run the process by hand. This is normal. In fact, our clustering job was on 3 dimensions, latitude, longitude and dew point, but we are plotting in 2 dimensions, namely latitude and longitude. Plotting that way may sound logical because we somehow expect a map of California, but by doing so we are missing a dimension. The dew points may connect points that are not exactly near each other, but along the same wind stream and at the same altitude. There are also some zones with a much higher density of sensors than others, which may then output more variations. In short, by plotting in 2D, we are deluding ourselves. One possible fix is to plot in 3D.
+When you look at the plot that way, you may think that k-means did not do a good job. It may look like some cluster centers are very close from each other. In short, the cluster centers may not look to be at the spot where you would have put them, if you had run the process by hand. This is normal. In fact, our clustering job was on 3 dimensions, latitude, longitude and dew point, but we are plotting in 2 dimensions, namely latitude and longitude. Plotting that way may sound logical because we somehow expect a map of California, but by doing so we are missing a dimension. You could be tempted to plot in 2D, and you would get the following result.
+
+```shell
+# Extract only Latitude and Longitude columns
+X_2d = df.loc[:, ["Latitude", "Longitude"]]
+
+# Fit KMeans for 5 clusters
+n_clusters = 5
+kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
+kmeans.fit(X_2d)
+
+# Get cluster labels and centroids
+labels = kmeans.labels_
+centroids = kmeans.cluster_centers_
+
+# Plot the clusters
+fig, ax = plt.subplots(figsize=(8, 8))
+
+# Scatter plot for the data points colored by cluster
+sns.scatterplot(
+    x=X_2d["Latitude"], 
+    y=X_2d["Longitude"], 
+    hue=labels, 
+    palette="tab10", 
+    s=50, 
+    ax=ax, 
+    legend="full"
+)
+
+# Plot the centroids
+ax.scatter(
+    centroids[:, 0], centroids[:, 1], 
+    c='black', s=200, marker='X', label='Centroids'
+)
+
+# Add labels and title
+ax.set_title("KMeans Clustering with 5 Clusters (Latitude vs Longitude)")
+ax.set_xlabel("Latitude")
+ax.set_ylabel("Longitude")
+ax.legend()
+
+plt.grid()
+plt.show()
+
+```
+
+
+However, you are not considering the dew points, you are just plotting the 2D map of the sensors in California, with special consideration given to the areas where you have more sensors than others. But then you lost the dewpoint information. A better approach in this case is to plot in 3D. We can afford to run this 3D plot, because we are considering 3 dimentions (lat/long, dewpoint). Naturallly, if your data had more dimensions, you would need a different approach. 
+The dew points are interesting, because they may connect points that are not exactly near each other, but along the same wind stream and at the same altitude. There are also some zones with a much higher density of sensors than others, which may then output more variations. In short, by plotting in 2D, we are deluding ourselves. One possible fix is to plot in 3D.
 
 
 ```shell
@@ -258,22 +306,191 @@ ax.set_zlabel("Dewpoint")
 plt.show()
 ```
 
-With this projection, you see the differences in density, but you also get a better view of the groups. 
+With this projection, you see the differences in density, but you also get a better view of the groups. In a real use case, you would find a way to rotate the graph so you could look under all the angles, if such rotation would help you understand the data. But already from this default projection, you can see a structure in the data.
 
 
-
-
-```shell
-print('hello world') # this is just a test
-```
-
-
-
-
-
-
+So far, k-measn seems to work reasonably well. You may however be tempted to also try DBSCAN, just because we mentioned it in the class. The first step is of course to import the libraries you need, which include DBSCAN from the scikit learn library, but also the Standard Scaler. You may have remember it, as we used it before. Its role is to ensure that all elements (lat/long/dew point) use the same scale, to avoid that one dimensions pulls too much on the others and introduces a bias.
 
 
 ```shell
-print('hello world') # this is just a test
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Step 1: Scale the data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df[["Dewpoint", "Latitude", "Longitude"]])
+
 ```
+
+Then, as is now usual with scikit learn and its defaults, running DBSCAN is just about calling the fit command.
+
+
+```shell
+# Step 2: Run DBSCAN
+dbscan = DBSCAN(eps=0.3, min_samples=5)
+labels = dbscan.fit_predict(X_scaled)
+```
+
+Once DBSCAN calculations complete, we can assign labels to each cluster (here, they will just be cluster numbers), then plot all these clusters.
+
+```shell
+# Step 3: Add labels to the original DataFrame for visualization
+df["DBSCAN_Labels"] = labels
+
+# Step 4: Plot the DBSCAN results (Latitude vs Longitude)
+fig, ax = plt.subplots(figsize=(8, 8))
+
+# Scatter plot: color points based on their DBSCAN labels
+sns.scatterplot(
+    x=df["Latitude"], 
+    y=df["Longitude"], 
+    hue=df["DBSCAN_Labels"], 
+    palette="tab10", 
+    s=50, 
+    ax=ax, 
+    legend="full"
+)
+
+# Add titles and labels
+ax.set_title("DBSCAN Clustering (Latitude vs Longitude)")
+ax.set_xlabel("Latitude")
+ax.set_ylabel("Longitude")
+plt.grid()
+plt.show()
+
+```
+
+If your output is like mine, you may not be super impressed. It seems that DBSCAN found 6 clusters, but the majority of California is part of a single, large cluster. You may think that this is because we are plotting again in 2D instead of 3D. Okay, it's a good possibility, so let's plot in 3D instead.
+
+
+```shell
+# Import libraries
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+# Step 1: Scale the data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df[["Dewpoint", "Latitude", "Longitude"]])
+
+# Step 2: Run DBSCAN
+dbscan = DBSCAN(eps=0.3, min_samples=5)
+labels = dbscan.fit_predict(X_scaled)
+
+# Step 3: Add labels to the original DataFrame
+df["DBSCAN_Labels"] = labels
+
+# Step 4: Create the static 3D scatter plot
+fig = plt.figure(figsize=(10, 6))
+ax = fig.add_subplot(111, projection='3d')
+
+# Scatter plot: color points based on DBSCAN labels
+ax.scatter(
+    df["Latitude"], 
+    df["Longitude"], 
+    df["Dewpoint"], 
+    c=df["DBSCAN_Labels"], 
+    cmap="tab10", 
+    s=50
+)
+
+# Set axis labels and title
+ax.set_title("DBSCAN Clustering (Latitude, Longitude, Dewpoint)")
+ax.set_xlabel("Latitude")
+ax.set_ylabel("Longitude")
+ax.set_zlabel("Dewpoint")
+
+# Show the static 3D plot
+plt.show()
+
+```
+
+Well, if your proejction is like mine, this is still not very impressive. There is one gigantic cluster, and then 5 other small clusters. The reason why DBSCAN fails in this case is because of the two values we have to define, eps, which is the minumum radius of a cluster, and min_samples, which is the minimum number of points needed for a cluster. A good part of the job with DBSCAN is to find the right value for eps and for min_samples. In the code blocks above, (or copy paste in a new block), try to change eps and min_samples to see if you can get something that resembles the 'good' answer provided ny k-means.
+
+In the end, you may find that DBSCAN is not a better option for this case. In fact, the issue is that the data is not particularly noisy, in other words, you cannot say with certainty that there are points in one cluster that should be in the other cluster, there fore the output from k-means is just as good as anything else.
+
+IN fact, as we shared in class, k-means is often the first and best answer. But there are definitely some cases where k-means fails and DBSCAN is better. let's consider a last example. We took your sensor and atatched it to a robotic arm, then recorded the IMU data while the arm was moving up then down toward the right, then down then up towward the left. We stored these various positions in the file cluster_robotic_arm. In the code below, change the path to where you stored the file. The position of the sensor can be visualized as follows.
+
+
+```shell
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load the Data
+# Replace the path with the correct location of robotic_arms.csv
+file_path = "/Users/jerhenry/Documents/Perso/IMT/IMT_ML_IoT/2024-2025/Github/cluster_robotic_arms.csv"
+data = pd.read_csv(file_path)
+
+# Display the first few rows of the data
+print("Data Preview:")
+print(data.head())
+
+# Extract features (X_1 and X_2)
+X = data[['X_1', 'X_2']].values
+
+# Plot the Original Data
+plt.figure(figsize=(8, 6))
+plt.scatter(X[:, 0], X[:, 1], c='gray', s=50)
+plt.title("Original Data")
+plt.xlabel("X_1")
+plt.ylabel("X_2")
+plt.grid()
+plt.show()
+```
+
+It is fairly obvious from the recorded positions that there are two gestures there. So one obvious thing we may ask the algorithm is to simply group the points matching each gesture to its own cluster, so you can separate the right-up-right-down gesture from the left-down-left-up gesture. But if you try with k-means, you will get something silly. Let's compare k-means and DBSCAN side by side:
+
+```shell
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+
+# Preprocess the Data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Apply KMeans Clustering
+kmeans = KMeans(n_clusters=2, random_state=42)  # Expecting 2 clusters
+kmeans_labels = kmeans.fit_predict(X_scaled)
+
+# Apply DBSCAN Clustering
+dbscan = DBSCAN(eps=0.3, min_samples=10)
+dbscan_labels = dbscan.fit_predict(X_scaled)
+
+# Visualize the Results
+fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+# KMeans Clustering
+axes[0].scatter(X[:, 0], X[:, 1], c=kmeans_labels, cmap='viridis', s=50)
+axes[0].scatter(kmeans.cluster_centers_[:, 0], kmeans.cluster_centers_[:, 1],
+                c='red', marker='X', s=200, label="Centroids")
+axes[0].set_title("KMeans Clustering")
+axes[0].set_xlabel("X_1")
+axes[0].set_ylabel("X_2")
+axes[0].legend()
+
+# DBSCAN Clustering
+axes[1].scatter(X[:, 0], X[:, 1], c=dbscan_labels, cmap='plasma', s=50)
+axes[1].set_title("DBSCAN Clustering")
+axes[1].set_xlabel("X_1")
+axes[1].set_ylabel("X_2")
+
+plt.tight_layout()
+plt.show()
+
+# Print Cluster Label Counts
+print("KMeans Cluster Labels Count:")
+print(pd.Series(kmeans_labels).value_counts())
+
+print("DBSCAN Cluster Labels Count:")
+print(pd.Series(dbscan_labels).value_counts())
+```
+
+In this case, it is pretty obvious that DBSCAN is the winner. DBSCAN usually wis when data is noisy and you see where the clusters 'should' be. But k-means wins in most of the other cases.
+
+
+
