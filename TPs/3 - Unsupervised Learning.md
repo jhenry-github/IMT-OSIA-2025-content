@@ -412,7 +412,7 @@ Well, if your proejction is like mine, this is still not very impressive. There 
 
 In the end, you may find that DBSCAN is not a better option for this case. In fact, the issue is that the data is not particularly noisy, in other words, you cannot say with certainty that there are points in one cluster that should be in the other cluster, there fore the output from k-means is just as good as anything else.
 
-IN fact, as we shared in class, k-means is often the first and best answer. But there are definitely some cases where k-means fails and DBSCAN is better. let's consider a last example. We took your sensor and atatched it to a robotic arm, then recorded the IMU data while the arm was moving up then down toward the right, then down then up towward the left. We stored these various positions in the file cluster_robotic_arm. In the code below, change the path to where you stored the file. The position of the sensor can be visualized as follows.
+IN fact, as we shared in class, k-means is often the first and best answer. But there are definitely some cases where k-means fails and DBSCAN is better. let's consider a last example. We took your sensor and atatched it to a robotic arm, then recorded the IMU data while the arm was moving up then down toward the right, then down then up towward the left. We stored these various positions in the file [cluster_robotic_arm](https://github.com/jhenry-github/IMT-OSIA-2025-content/blob/main/TPs/cluster_robotic_arms.csv). In the code below, change the path to where you stored the file. The position of the sensor can be visualized as follows.
 
 
 ```shell
