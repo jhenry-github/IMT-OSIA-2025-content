@@ -61,6 +61,8 @@ model = tf.keras.models.Sequential([
 
 In short, this is the structure of your CNN:
 
+
+```shell
 Model: "sequential"
 _________________________________________________________________
  Layer (type)                Output Shape              Param #   
@@ -78,7 +80,7 @@ Total params: 167,562
 Trainable params: 167,562
 Non-trainable params: 0
 _________________________________________________________________
-
+```
 
 Once the model is defined, the next step is to compile it. The compiler uses 'adam', an adaptive optimizer that adjusts learning rates automatically during training. Remember that nale, adam is very efficient and widely used for CNNs.
 
