@@ -2,6 +2,8 @@
 
 We have worked with scikit learn in the previous labs, because working with Tensorflow without having covered neural networks makes the process uncomfortable. However, once that you understand the structure of a neural network, getting to tensorflow from scikit learn is not very difficult.
 
+## Linear Regression
+
 Let's start with a simple data set, supposed to represent the prices of houses based on their square footage. We pick 5 houses, of prices from 1000 to 3000 (these are square feet, divide by 9 if you want in square meters), and we select their matching price. To create a bit of randomness, we add some random value to these prices, so the set does not form a perfect straight line.
 
 ```shell
@@ -338,29 +340,333 @@ plt.show()
 
 ```
 
+## Logistic Regression
 
+Now that you get a grasp of tensorflow structure, we can go a bit faster. You may remember the idea of simple logistic regression, i.e. finding membership between two groups with a probbaility outcome, through the sigmoid function. Here again, let's generate some random points so we have something to work from. We first import the libraries we need, then we generate 1000 points, that we immediately randomly assign to one group or another (we do that so we can later evaluate the peformance of our algorithm; in real life, of course, you would likely not know the membership). We also use the usual random state fixed value, so you get the same random distribution as me when you run this exercize. 
 
 ```shell
+# Import libraries
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_classification
 
+# 1. Generate synthetic binary classification data
+X, y = make_classification(n_samples=1000,    # Number of samples
+                           n_features=2,     # Number of features (2 for easy visualization)
+                           n_classes=2,      # Binary classification
+                           n_informative=2,  # Number of informative features
+                           n_redundant=0,    # No redundant features
+                           random_state=42)  # Reproducibility
+
+# 2. Plot the data
+plt.figure(figsize=(8, 6))
+
+# Scatter plot of the two classes
+plt.scatter(X[y == 0][:, 0], X[y == 0][:, 1], color='blue', label='Class 0', alpha=0.6, edgecolor='k')
+plt.scatter(X[y == 1][:, 0], X[y == 1][:, 1], color='red', label='Class 1', alpha=0.6, edgecolor='k')
+
+# Add labels, legend, and title
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.title('Synthetic Binary Classification Data')
+plt.legend()
+plt.grid(True)
+plt.show()
 ```
 
 
+With scikit learn, we saw that the procedure was quite straightforward. After loading the libraries, we need data. You can reuse the data from above, so step 1 is not necessary (but it is here to remind you that you need to load the data). Then, as usual, we split the data into training and test sets. 
 
-```shell
-
-```
-
-
-
-
+Then we just call the logistic regression model, and ask the algorithm to find the best values (fit), given our training set of positions. We then ask the model to compute its prediction on the test set. As we know which point belongs to which group, we can also ask the model to print the prediction accuracy.
 
 
 
 
 
 ```shell
+# Import libraries
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# 1. Generate synthetic binary classification data
+X, y = make_classification(n_samples=1000, n_features=2, n_classes=2, 
+                           n_informative=2, n_redundant=0, random_state=42)
+
+# 2. Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 3. Initialize and train the Logistic Regression model
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# 4. Make predictions
+y_pred = model.predict(X_test)
+
+# 5. Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+```
+
+In my attempt, the prediction accuracy is at 88%, not bad. Let's graph the points and the decision boundary, along with the points in each group, to see where the model is right, and where it has some difficulties.
+
+```shell
+# 6. Plot decision boundary
+plt.figure(figsize=(8, 6))
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap='bwr', alpha=0.6, edgecolor='k')
+x_min, x_max = X_test[:, 0].min() - 1, X_test[:, 0].max() + 1
+y_min, y_max = X_test[:, 1].min() - 1, X_test[:, 1].max() + 1
+
+xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
+Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = Z.reshape(xx.shape)
+
+plt.contourf(xx, yy, Z, alpha=0.3, cmap='bwr')
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.title('Logistic Regression Decision Boundary (Scikit-learn)')
+plt.show()
+```
+
+It should not be suprising to see that the model has a hard time with the outliers we randomly placed in the wrong group when generating the random points.
+
+
+Let's look at the same procedure with tensorflow. The initial part is exactly the same as with scikit learn, we load libraries (okay, we need tf libraries instead of sk-learn libraries), then we get some data, and we split the data into training and test sets.
+
+
+```shell
+# Import libraries
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# 1. Generate synthetic binary classification data
+X, y = make_classification(n_samples=1000, n_features=2, n_classes=2, 
+                           n_informative=2, n_redundant=0, random_state=42)
+
+# 2. Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+```
+
+Let's then build the model. (almost) everything in tensorflow is a neural network, so we build a neural network of type sequential, i.e. each layer will be processed in order, and the output of one layer will be sent to the next layer. Practically, this is just a cosmetic wording, because in the logistic regression model we have a single equation, so our neural network is one layer structure, with one neuron. So 'sequential' is the default, but it does not bring any constraints, as there is a single cell anyway. The input is two-dimensional (because our points have (x,y) coordinates), so input has 2 features. Then the input is passed onto the main, Dense layer, wehre there is a single neuron, that uses the sigmoid function.
+
+
+
+```shell
+# 3. Build the TensorFlow model with Input layer
+model = tf.keras.Sequential([
+    tf.keras.Input(shape=(2,)),  # Explicit Input layer for 2 features
+    tf.keras.layers.Dense(1, activation='sigmoid')  # Logistic Regression layer
+])
+```
+
+
+The next step is to compile the model, i.e. tie together the model, the optimization function, the loss function and a mechanism to evaluate the accuracy (the loss) as we train. The optimization function is stochastic gradient descent. The loss function is the binary_crossentropy function that computes the distance between the predicted value and the real value (you may remember from the class notes that this uses an equation in the form loss = -1(1/n). sum(y.log(p)+(1-y).log(1-p)). Then the metric is the accuracy, i.e. whether the prediction (group 0 or 1) matches the real value.
+
+```shell
+# 4. Compile the model
+model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy'])
+```
+
+Once the model is compiled, we can go ahead and train it. Just like in the previosu case, we use, as a starting point, 100 epochs, and a batch size of 32 points per run. If you want to see the details of the training steps, set the verbose option to 1.
+
+As usual also, we save the model as soon as we have it. Again, with large models and large datasets, it is easier to save a model, then delete the file if we don't need it, than forget to save it, think the model is 'there' because it is in memory, then realise after closing and re-opening Jupyter that the model was not saved and we have to re-train.
+
+
+```shell
+# 5. Train the model
+history = model.fit(X_train, y_train, epochs=100, batch_size=32, verbose=0)
+model.save("logistic_regression_model.keras")
+print("Model saved successfully!")
+```
+
+Our next step is to evaluate the model. This is done by running the model on each point of the test set. We then print the accuracy value.
+
+Because it is a categorical prediciton (group 0 or 1), it is always useful to display a confusion matrix, to see if we can find a pattern for the points that are misclassified. In this particular case, because we use random data, we have about the same number of outliers (points in the wrong group) for both groups, but in real life, you may see one group that is performing worse than the other, which may lead you to look at your data more closely to understand why, and whether or not you need to work on your data a bit more.
+
+
+```shell
+# 6. Evaluate the model
+loss, accuracy = model.evaluate(X_test, y_test, verbose=0)
+print("Accuracy:", accuracy)
+
+# 7. Make predictions
+y_pred_probs = model.predict(X_test)
+y_pred = (y_pred_probs > 0.5).astype(int)
+
+# 8. Print evaluation metrics
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+```
+Once we have our model and its accuracy, we can visualize the points, their group membership and the location where the model placed the decision boundary, just like we did fro scikit learn.
+
+```shell
+# 9. Plot decision boundary
+plt.figure(figsize=(8, 6))
+plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap='bwr', alpha=0.6, edgecolor='k')
+
+x_min, x_max = X_test[:, 0].min() - 1, X_test[:, 0].max() + 1
+y_min, y_max = X_test[:, 1].min() - 1, X_test[:, 1].max() + 1
+
+xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
+Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+Z = (Z > 0.5).astype(int)
+Z = Z.reshape(xx.shape)
+
+plt.contourf(xx, yy, Z, alpha=0.3, cmap='bwr')
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.title('Logistic Regression Decision Boundary (TensorFlow)')
+plt.show()
+```
+
+## Saving to tflite
+
+The reason for us to look at tensorflow is because most IoT boards and embedded systems cannot run full Python and cannot run complex structures like scikit learn. Therefore, once you have a model trained 'in the cloud', deploying it on the IoT edge is a major problem. However, tensorflow has developed a light version, tflite, that can run on the edge. The process is to first develop a full model as we did above. You then save the model into a tflite format, using a TFLiteConverter function. The result is a .tflite file containing the model optimized for inference. Once this phase completes, the .tflite model file is copied to the IoT or edge device.
+TFLite models are designed to run efficiently on lightweight devices like microcontrollers, edge CPUs, GPUs, or specialized NPUs, because they only contain the parameters needed for the inference (i.e., the equations, but not the parameters and all the other meta structure of the model - this means that you can't really use the tflite model for further training, just for inference).
+
+On the IoT or edge device, a TFLite interpreter binary runs the .tflite model. This interpreter is typically written in C++ (or C) and is highly optimized for low-memory and low-power environments.
+When developing an application for the edge device, you write code in C++, C, or another supported language to call the TFLite interpreter and run inference on the model. The interpreter loads the .tflite file, processes input data, and generates predictions.
+
+Therefore it is useful to be able to convert the tensorflow model into a tflite model.
+
+First, let's look at the logistic regression model. We use 'os' to check the model file size, and summary to look at the tensorflow parameters for this model.
+
+
+```shell
+import os
+# 1. Check the file size
+model_path = "logistic_regression_model.keras"
+file_size = os.path.getsize(model_path) / (1024 * 1024)  # Convert bytes to MB
+print(f"Model file size: {file_size:.2f} MB")
+
+# 2. Load the model
+loaded_model = tf.keras.models.load_model(model_path)
+print("Model loaded successfully!")
+
+# 3. Examine the model
+loaded_model.summary()
+```
+
+As you can see, the model is fairly small, it would run easily on a constrained board, if the board could run some complex OS, with Python support etc. However, as the firmware is likely compact, it will likley call the tflite interperter, so we need the tflite model. Let's save the model into tflite format.
+
+
+The model may be in memory, in which case you can start from step 2. But if you saved the model and closed Jupyter, use step 1 to reload the model into memory
+
+
+```shell
+import tensorflow as tf
+
+# Path to the saved Keras model
+model_path = "logistic_regression_model.keras"
+
+# 1. Load the Keras model
+loaded_model = tf.keras.models.load_model(model_path)
+print("Model loaded successfully!")
+
+# 2. Convert the model to TFLite format
+converter = tf.lite.TFLiteConverter.from_keras_model(loaded_model)  # Create the converter
+tflite_model = converter.convert()  # Convert the model to TFLite format
+
+# 3. Save the TFLite model to a file
+tflite_model_path = "logistic_regression_model.tflite"
+with open(tflite_model_path, "wb") as f:
+    f.write(tflite_model)
+
+print(f"TFLite model saved to: {tflite_model_path}")
 
 ```
+
+The file itself is fairly small, but the initial tensorflow model was small as well. Let's look at the parameters that the tflite file contains.
+
+
+
+```shell
+interpreter = tf.lite.Interpreter(model_path="logistic_regression_model.tflite")
+interpreter.allocate_tensors()
+
+# Get input and output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+print("TFLite Model Input Details:")
+print(input_details)
+
+print("\nTFLite Model Output Details:")
+print(output_details)
+```
+
+For now, note that the quantization is not set (we do not change the precision of the calculations, we'll do that for the CNN part below).
+
+Let's also look at the linear regression (tensorflow) model. The process is the same as for the logistic structure.
+
+
+```shell
+import os
+# 1. Check the file size
+model_path = "tf_simple_linear_regression_model.keras"
+file_size = os.path.getsize(model_path) / (1024 * 1024)  # Convert bytes to MB
+print(f"Model file size: {file_size:.2f} MB")
+
+# 2. Load the model
+loaded_model = tf.keras.models.load_model(model_path)
+print("Model loaded successfully!")
+
+# 3. Examine the model
+loaded_model.summary()
+```
+
+Here again, the model is small, but we need a tflite structure to run at the edge. Let's convert it.
+
+```shell
+import tensorflow as tf
+
+# Path to the saved Keras model
+model_path = "tf_simple_linear_regression_model.keras"
+
+# 1. Load the Keras model
+loaded_model = tf.keras.models.load_model(model_path)
+print("Model loaded successfully!")
+
+# 2. Convert the model to TFLite format
+converter = tf.lite.TFLiteConverter.from_keras_model(loaded_model)  # Create the converter
+tflite_model = converter.convert()  # Convert the model to TFLite format
+
+# 3. Save the TFLite model to a file
+tflite_model_path = "simple_linear_regression_model.tflite"
+with open(tflite_model_path, "wb") as f:
+    f.write(tflite_model)
+
+print(f"TFLite model saved to: {tflite_model_path}")
+```
+
+And let's look at the tflite file structure.
+
+
+```shell
+interpreter = tf.lite.Interpreter(model_path="simple_linear_regression_model.tflite")
+interpreter.allocate_tensors()
+
+# Get input and output details
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+print("TFLite Model Input Details:")
+print(input_details)
+
+print("\nTFLite Model Output Details:")
+print(output_details)
+```
+
+Here again the structure is light. In most cases however, the model is large, because the dataset is large and the model is complex, and there will need to be additional steps in the translation to tflite. let's explore a simplified case below, with images and a CNN.
+
 
 # CNN Example, the CIFAR-10 case
 The CIFAR-10 dataset, which is a popular dataset for image classification tasks. It is a collection of 60,000 images divided into 50,000 training images and 10,000 test images
