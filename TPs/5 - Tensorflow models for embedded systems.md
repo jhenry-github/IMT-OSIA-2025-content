@@ -1,6 +1,367 @@
-a
-a
-a
+# Basics of Tensorflow vs. scikit learn
+
+We have worked with scikit learn in the previous labs, because working with Tensorflow without having covered neural networks makes the process uncomfortable. However, once that you understand the structure of a neural network, getting to tensorflow from scikit learn is not very difficult.
+
+Let's start with a simple data set, supposed to represent the prices of houses based on their square footage. We pick 5 houses, of prices from 1000 to 3000 (these are square feet, divide by 9 if you want in square meters), and we select their matching price. To create a bit of randomness, we add some random value to these prices, so the set does not form a perfect straight line.
+
+```shell
+# 1. Simple data with noise
+np.random.seed(42)  # Set seed for reproducibility
+X = np.array([[1000], [1500], [2000], [2500], [3000]], dtype=float)  # House sizes
+y_true = np.array([200, 250, 300, 350, 400], dtype=float)  # True house prices
+
+# Introduce noise in the y values
+noise = np.random.normal(0, 15, size=y_true.shape)  # Noise with mean=0, std=15
+y = y_true + noise  # Add noise to true values
+
+```
+
+Let's plot these houses areas and their prices so you can see what we are working from.
+
+```shell
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10, 6))
+
+# Plot original data points with noise
+plt.scatter(X, y, color='blue', label='Noisy Data Points')
+
+# Add labels and legend
+plt.xlabel('House Size (sq ft)')
+plt.ylabel('House Price (in thousands)')
+plt.title('Linear Regression: original data')
+plt.legend()
+plt.grid(True)
+plt.show()
+```
+
+Nothing extraordinary so far. You may remember that we used the normal equation to solve the problem with scikit learn, something like this:
+
+```shell
+# Import libraries
+from sklearn.linear_model import LinearRegression
+
+# 2. Initialize the linear regression model
+model = LinearRegression()
+
+# 3. Train (fit) the model
+model.fit(X, y)
+
+# 4. Predict house prices
+predicted_sklearn = model.predict(X)
+
+# 5. Display results
+print("Coefficients (Weight):", model.coef_)
+print("Intercept (Bias):", model.intercept_)
+print("Predicted Prices:", predicted_sklearn)
+```
+
+There is no gradient descent, because the normal equation solves the problem in one go. However, it is computationally expensive, so you would only run this type of structure on a small problem. Although you can find the version of tensorflow with the normal equation in the class material, in practice we use gradient descent because the process allows us to deal with much larger datasets (as we can load part of the dataset as we train, while the normal equation requries the full dataset to be injected in memory).
+
+So let's generate a larger dataset, of 10,000 houses, and plot their prices.
+
+
+```shell
+import matplotlib.pyplot as plt
+
+# Generate data (large dataset example)
+np.random.seed(42)
+X = np.random.rand(10000, 1) * 1000  # 10,000 house sizes (random values)
+y = 200 + 0.1 * X + np.random.randn(10000, 1) * 20  # True linear function with noise
+
+# Plot the data 
+plt.figure(figsize=(10, 6))
+plt.scatter(X, y, color='blue', alpha=0.2, label='Noisy Data Points')
+plt.xlabel('House Size (sq ft)')
+plt.ylabel('House Price (in thousands)')
+plt.title('Large dataset of house prices')
+plt.legend()
+plt.grid(True)
+plt.show()
+```
+
+Now let's use Tensorflow. If you want to, you can copy the code above and try scikit learn with the normal equation. It should still work, but you should see that the machine starts to slow down a bit.
+
+
+Meanwhile, with tensorflow. we first load the libraries, then we use Standard Scaler to scale x a,d y to the same units. In the small example above, you can see that (in units) the size of the houses is 10 times bigger than the price. This will cause distorsion (bias). So the standard scaler makes sure that all parameters are on the same scale. The tool retains the scaling ratio, so it is easy to convert back when needed. This is especially important when you have many parameters, because you are almost guaranteed that some parameters will have large scales that will make other parameters (with smaller scales) inconsequent.
+
+```shell
+# Import libraries
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Scale the data for TensorFlow training
+from sklearn.preprocessing import StandardScaler
+
+scaler_X = StandardScaler()
+scaler_y = StandardScaler()
+
+X_scaled = scaler_X.fit_transform(X)  # Scale features
+y_scaled = scaler_y.fit_transform(y_true)  # Scale targets
+```
+
+In tensorflow, (almost) everything is a neural network. Tensorflow uses keras as a wrapper to define the model with simple words. So here, our model is a linear regression model, but it is also a neural network. Because there is a single parameter (the house area) that we inject into the model, the input structure is a 1D vector (of one value). We also want to initialize the parameters to 0. Now, as everythgin is a neural network, we define our model as a 'sequential' model, i.e. a model where each layer is computed then sent to the next one. This is just a polite way of following tensorflow way of live, because our network has a single layer (the Dense layer) with a single neuron where the equation will reside.
+
+
+```shell
+#  Define the TensorFlow model
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(1, input_shape=(1,), kernel_initializer='zeros', bias_initializer='zeros')
+])
+```
+The dense layer is fundamental in neural networks, it is often there, and it connects the input (in our case, the house area) to the output (in our case, the predicted price). The job of he dense layer is to perfrome the activation function (in our case, the linear equation), with output = activation(input . weights + some value - maybe 0).
+
+Once we have defined the model, we need to compile it. Compiling may have a different meaning here than in programming. In our context, it means binding the optimizer (ink the optimization algorithm (e.g., adam, sgd) to the model), specifying the loss function (define how the error between predictions and true labels is calculated, and setting metrics (allow the model to report useful evaluation measures (like accuracy)). So compiling is just about initializing the chosen optimizer, preparing the loss function to use during training and configuring any additional metrics to track performances.
+
+
+In our case, it is a linear regression case, so we use Stochastic Gradient Descent as the optimizer. Let's choose an initial learning rate of 0.01. THis will probably need to be refined later. We also use Mean Square Error (mse) as our metric to compare the calculated values to the real price values.
+
+
+```shell
+#  Compile the model with SGD optimizer
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+model.compile(optimizer=optimizer, loss='mse')
+```
+
+Once the compilation is done, we need to train the model, which is the main task. Let' use 100 epochs and a bacth size of 32 houses at each pass. I use verbose=0 so that the system does not tell you the result of each pass, but set it to 1 if you want to see what happens (warning: verbose means that it is going to tell you each operation during the training phase).
+
+Once the training completes, let's save the mdeol, it is always a good habit to take. The model is in memory, but the scond you close the notebook, you lose the training you spent so much time running. So saving a model you will decide to discard later is always betetr than not saving and having to reinvest, possibly hundreds of hours, in training.
+
+```shell
+# Train and save the model
+history = model.fit(X_scaled, y_scaled, epochs=100, batch_size=32, verbose=0)
+model.save("tf_simple_linear_regression_model.keras")
+print("Model saved successfully!")
+
+```
+
+The last 2 operations consist first in predicting all the values in the training set (now that the model is trained) and saving them somewhere, then converting them back to their original scale. This way we can look at the data and check the efficiency of the model. The other opration is to extract from the model the slope of the curve (or weight) and the intercept (or bias), so we can look at the line equation.
+
+
+```shell
+#  Predict values
+y_pred_scaled = model.predict(X_scaled)
+y_pred = scaler_y.inverse_transform(y_pred_scaled)  # Reverse scaling to original scale
+
+#  Extract weights and bias
+weights, bias = model.layers[0].get_weights()
+print("Weight (Coefficient):", weights[0][0])
+print("Bias (Intercept):", bias[0] * scaler_y.scale_[0] + scaler_y.mean_)  # Adjust bias for scaling
+
+```
+
+Let's plot the result. You may not be super impressed. With our (random) learning rate and epoch count, we are not expecting any miracle.
+
+```shell
+# Plot the results
+plt.figure(figsize=(10, 6))
+
+# Scatter plot for noisy data
+plt.scatter(X, y_true, color='blue', alpha=0.2, label='Noisy Data Points')
+
+# Plot the regression line
+plt.plot(X, y_pred, color='red', linewidth=2, label='Best Model Regression Line')
+
+# Add labels, legend, and title
+plt.xlabel('House Size (sq ft)')
+plt.ylabel('House Price (in thousands)')
+plt.title('Linear Regression with un-refined tf')
+plt.legend()
+plt.grid(True)
+plt.show()
+```
+
+In real life, we want to find the right learning rate and ecpoh number for any problem we are training on. One good tool is keras tuner. In tuner, you define a model as we did above, but it is called a super model, because in addition to the model structure, you add a range for the learning rate, and you log each learning rate and its results.
+
+```shell
+# Define the HyperModel for Keras Tuner
+def build_model(hp):
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(1, input_shape=(1,), kernel_initializer='zeros', bias_initializer='zeros')
+    ])
+    # Tune the learning rate
+    learning_rate = hp.Float("learning_rate", min_value=1e-4, max_value=1e-1, sampling="log")
+    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+    
+    model.compile(optimizer=optimizer, loss='mse')
+    return model
+```
+
+You also want to include another block of code to try multiple epoch values, for example from 50 to 200, by change of 10 epochs. Then you tell the tuner to test them and store the results.
+
+```shell
+#  Custom Tuner to include epoch tuning
+class RegressionTuner(kt.RandomSearch):
+    def run_trial(self, trial, *args, **kwargs):
+        # Add epochs as a tunable hyperparameter
+        hp = trial.hyperparameters
+        epochs = hp.Int("epochs", min_value=50, max_value=200, step=10)
+        
+        # Run the training with the selected epoch count
+        kwargs['epochs'] = epochs
+        results = super(RegressionTuner, self).run_trial(trial, *args, **kwargs)
+        
+        # Return the final metric for the trial
+        return results
+```
+
+With these two functions defined, you can instantiate the tuner, with the objective of finding the best learning rate and epoch count (that minimizes the loss function), and try 10 learning rates and epochs combinations.
+
+```shell
+#  Instantiate the tuner
+tuner = RegressionTuner(
+    build_model,
+    objective="loss",  # Minimize loss
+    max_trials=10,     # Number of trials
+    executions_per_trial=1,
+    directory="sgd_tuning_epochs",
+    project_name="regression_sgd_epochs"
+)
+```
+You can also ask the tuner to stop if it finds a super value. The you run the search, which takes some time. At the end of the search, you pick the best learning rate and epoch combination.
+
+
+```shell
+# Define a callback for early stopping
+stop_early = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=5)
+
+# Run the hyperparameter search
+tuner.search(X_scaled, y_scaled, batch_size=32, callbacks=[stop_early], verbose=1)
+
+#  Get the best hyperparameters
+best_hp = tuner.get_best_hyperparameters(1)[0]
+print("Best Learning Rate:", best_hp.get("learning_rate"))
+print("Best Epoch Count:", best_hp.get("epochs"))
+```
+
+Once you have done that, you can use these parameters found with keras tuner to train your model, and you should get much better results.
+
+In real life, all these steps are done in one go, for example like this (I include the initial random data generation part, in real life this would be where you load your dataset):
+
+
+```shell
+# Import libraries
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+import keras_tuner as kt
+
+# 1. Generate data (large dataset example)
+np.random.seed(42)
+X = np.random.rand(10000, 1) * 1000  # 10,000 house sizes (random values)
+y_true = 200 + 0.1 * X + np.random.randn(10000, 1) * 20  # True linear function with noise
+
+# 2. Scale the data for TensorFlow training
+scaler_X = StandardScaler()
+scaler_y = StandardScaler()
+
+X_scaled = scaler_X.fit_transform(X)  # Scale features
+y_scaled = scaler_y.fit_transform(y_true)  # Scale targets
+
+# 3. Define the HyperModel for Keras Tuner
+def build_model(hp):
+    model = tf.keras.Sequential([
+        tf.keras.layers.Dense(1, input_shape=(1,), kernel_initializer='zeros', bias_initializer='zeros')
+    ])
+    # Tune the learning rate
+    learning_rate = hp.Float("learning_rate", min_value=1e-4, max_value=1e-1, sampling="log")
+    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+    
+    model.compile(optimizer=optimizer, loss='mse')
+    return model
+
+# 4. Custom Tuner to include epoch tuning
+class RegressionTuner(kt.RandomSearch):
+    def run_trial(self, trial, *args, **kwargs):
+        # Add epochs as a tunable hyperparameter
+        hp = trial.hyperparameters
+        epochs = hp.Int("epochs", min_value=50, max_value=200, step=10)
+        
+        # Run the training with the selected epoch count
+        kwargs['epochs'] = epochs
+        results = super(RegressionTuner, self).run_trial(trial, *args, **kwargs)
+        
+        # Return the final metric for the trial
+        return results
+
+# 5. Instantiate the tuner
+tuner = RegressionTuner(
+    build_model,
+    objective="loss",  # Minimize loss
+    max_trials=10,     # Number of trials
+    executions_per_trial=1,
+    directory="sgd_tuning_epochs",
+    project_name="regression_sgd_epochs"
+)
+
+# 6. Define a callback for early stopping
+stop_early = tf.keras.callbacks.EarlyStopping(monitor="loss", patience=5)
+
+# 7. Run the hyperparameter search
+tuner.search(X_scaled, y_scaled, batch_size=32, callbacks=[stop_early], verbose=1)
+
+# 8. Get the best hyperparameters
+best_hp = tuner.get_best_hyperparameters(1)[0]
+print("Best Learning Rate:", best_hp.get("learning_rate"))
+print("Best Epoch Count:", best_hp.get("epochs"))
+
+# 9. Train the model with the best hyperparameters
+best_model = tuner.get_best_models(1)[0]
+best_model.fit(X_scaled, y_scaled, epochs=best_hp.get("epochs"), batch_size=32, verbose=0)
+
+# 10. Make predictions
+y_pred_scaled = best_model.predict(X_scaled)
+y_pred = scaler_y.inverse_transform(y_pred_scaled)
+
+# 11. Extract weights and bias
+weights, bias = best_model.layers[0].get_weights()
+print("Weight (Coefficient):", weights[0][0])
+print("Bias (Intercept):", bias[0] * scaler_y.scale_[0] + scaler_y.mean_)
+
+# 12. Plot the results
+plt.figure(figsize=(10, 6))
+
+# Scatter plot for noisy data
+plt.scatter(X, y_true, color='blue', alpha=0.2, label='Noisy Data Points')
+
+# Plot the regression line
+plt.plot(X, y_pred, color='red', linewidth=2, label='Best Model Regression Line')
+
+# Add labels, legend, and title
+plt.xlabel('House Size (sq ft)')
+plt.ylabel('House Price (in thousands)')
+plt.title('Linear Regression Using SGD with Tuned Learning Rate and Epochs')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+```
+
+
+
+```shell
+
+```
+
+
+
+```shell
+
+```
+
+
+
+
+
+
+
+
+
+```shell
+
+```
+
 # CNN Example, the CIFAR-10 case
 The CIFAR-10 dataset, which is a popular dataset for image classification tasks. It is a collection of 60,000 images divided into 50,000 training images and 10,000 test images
 Each image is 32x32 pixels with 3 color channels (RGB). There are 10 classes representing different object categories: Airplane, Automobile, Bird, Cat, Deer, Dog, Frog, Horse, Ship, and Truck.
