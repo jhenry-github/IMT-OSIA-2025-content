@@ -1,9 +1,57 @@
+# Lab setup
+This lab supposes that you have Linux installed, for example in a VM, and that your Linux distribution can reach the Internet.
+
+In may tasks in machine learning, you will be working with specific frameworks and specific librarires. It is not uncommon that a library would have specific dependencies, which are not compatible with dependencies of other libraries. For example, if you install Pytorch, it may require a specific version of numpy (a library for managing numbers and equations), while tensorflow would require a different numpy version. The outcome of this complexity is that it is common to install a virtual environment, from where you will be running a specific framework. Then, if you install a new framework, you switch to another framework.
+
+Let's see how you would do this, as it is a very common task in aiml. In Ubuntu, venv is the tool of choice. From your Ubuntu command line enter:
+
+```shell
+sudo apt install python3-venv
+```
+Enter your user password when asked. Once the installation completes, you can use venv to create and manage environments. Let's create a first environment. Still in the command line, from the place where you would want to have environments created (each of them will be a folder, so your home directory could be a good location):
+
+```shell
+python3 -m venv IMTAIML
+```
+
+The operation should take a few seconds, because venv creates a lot of default elements in the environement, in addition to the environement itself. Once the operation completes, you should see a new IMTAIML folder. Change to this directory:
+
+```shell
+cd IMTAIML
+```
+
+Once there, you can activate your environment. This activation is done by calling the activate operation with the source command:
+
+```shell
+source bin/activate
+```
+
+You should see that your prompt has changed:
+
+```shell
+(IMTAIML) developer@lmvm-xfce:~/IMTAIML$
+```
+
+The parenthesis show in which environement context you are now operating. You can just run deactivate to exit this environment, and you can just call activate from another environement if you want to switch from one envirnement to another one. Let's stay with this environment. We will install a few tools, and will install other tools later from Jupyter. For now, install scikit-learn and tensorflow 
+
+```shell
+pip install scikit-learn tensorflow jupyter
+```
+
+Accept the packages proposed by the installer. A lot of dependencies need to be installed, so this will take a while.
+
+
+Once the installation completes, launch Jupyter, which will be the main tool we will work from (in addition to Simplicity Studio).
+
+```shell
+jupyter-lab &
+```
+
+
 # Jupyter lab
 
-In this exercise and the next ones, we will navigate through different environments (scikit learn, tensorflow), each with their own dependencies requirements. We will use Jupyter to manage notes and code. An easy way to navigate the complexity of compatibility between requirements is to use different environments. One way to run these is to install an environement manager. 
-You can use venv in Linux and MacOS, or more cadvanced solutions like Anaconda Navigator, for which Jupyter is one component that you can activate. Your default environment should include the elements you need for this exercise.
+When launching Jupyter, the server should launch on your machine, and the lab should open in a local browser. If the browser does not start automatically, note the URL in the command prompt, that should be in the form http://localhost:8888/lab?token= and some value. Copy this long URL into your browser to access Jupyter-lab.
 
-Launch Jupyter Lab.
 
 ![alt test](JupyterLab.png?raw=true "Jupyter Labs")
 
