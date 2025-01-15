@@ -85,7 +85,7 @@ plt.ylabel('Status (0: clogged, 1: reused)')
 SVM is the companion to any supervised activity like logistic regression. It allows you to find the boundary between groups, and therefore speed up the recognition of group membership during the inference phase.
 Suppose your board was mounted into a necklace (or a belt buckle). Of course, other devices (like smartphones) would be possible too. Then, in the training phase, volunteers were asked to perform specific activities (walking, walking upstairs, walking downstairs, sitting, standing, laying). Each time they were performing one activity,
 the sensor would have recorded 3-axial angular acceleration (at a rate of 50 Hz). Each activity would then have been labeled. You can find more details on how the experiements were performed, the number of vounteers, the data filtering technique applied etc.
-on the [UCI site]([https://archive.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones]). The data is downloaded as a set of txt files in  [this zip archive](https://archive.ics.uci.edu/static/public/240/human+activity+recognition+using+smartphones.zip).
+on the [UCI site](https://archive.ics.uci.edu/dataset/240/human+activity+recognition+using+smartphones). The data is downloaded as a set of txt files in  [this zip archive](https://archive.ics.uci.edu/static/public/240/human+activity+recognition+using+smartphones.zip).
 
 First, look at the data, you will see that the folder has subfolders with txt files, following this structure:
 
