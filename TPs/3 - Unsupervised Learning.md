@@ -1,3 +1,5 @@
+# Unsupervised Learning
+
 In this lab, we want to explore unsupervised learning, namely K-means and DBSCAN. Most of the time you will use K-means, but you will see that there are some cases where DBSCAN is better. 
 However, keep in mind that we are often working in multiple dimensions and the projection in in 2 dimensions is sometimes misleading. Let's explore further.
 First, let’s load some libraries. In this lab, like in the other ones, you will see that we tend to load the same libraries multiple times. In a real notebook you would not do that, but here I am expecting that you may want to explore some blocks independently, so I want to make sure that you have the libraries you need each time. 
@@ -491,6 +493,129 @@ print(pd.Series(dbscan_labels).value_counts())
 ```
 
 In this case, it is pretty obvious that DBSCAN is the winner. DBSCAN usually wins when data is noisy and you see where the clusters 'should' be. But k-means wins in most of the other cases.
+
+
+# Bonus, random forests
+
+Random forests are versatile algorithms, that work well with categorical data (via implicit one-hot encoding), and are equally effective for numerical features like the Iris dataset. This dataset includes measurements from iris flowers (petals width/length), and these combinations are used to classify the iris sub-species (spoiler alert, there are 3 different sub-species).
+
+Here is a simple Random Forest implementation, using 100 trees. The first part does not include many surprises, we load the libraries (we use scikit learn), the dataset and make a split.
+
+```shell
+# Import necessary libraries
+import numpy as np
+import pandas as pd
+from sklearn.datasets import load_iris
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load the Iris dataset
+iris = load_iris()
+X = pd.DataFrame(iris.data, columns=iris.feature_names)
+y = iris.target
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+```
+
+The structure of the random forest part is similar in structure to the other codes we have seen so far, we use a fixed random state so we all have the same results, we also use 'fit' to train and use the same variable naming conventions. The only new element is the number of trees that we define (n_estimators):
+
+
+```shell
+# Initialize and train the Random Forest model
+rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = rf_model.predict(X_test)
+
+# Evaluate the model
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+```
+
+Let's use seaborn to create a confusion matrix, and a graph to show which features (petal and sepal width and lentgh) are the most important:
+
+
+```shell
+# Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=iris.target_names, yticklabels=iris.target_names)
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+# Feature Importance
+feature_importances = pd.Series(rf_model.feature_importances_, index=iris.feature_names)
+feature_importances.sort_values(ascending=False).plot(kind='bar', color='skyblue')
+plt.title("Feature Importance")
+plt.ylabel("Importance")
+plt.show()
+```
+
+Random forests are interesting to look at in details, so let's look at the structure of one of the 100 trees. Note in the code the spot where you define the tree number/index, change this number to look at different trees.
+
+
+```shell
+from sklearn.tree import export_text, plot_tree
+import matplotlib.pyplot as plt
+
+# Visualize one of the trees in the forest
+tree_index = 0  # You can change this to view a different tree
+plt.figure(figsize=(20, 10))
+plot_tree(rf_model.estimators_[tree_index],
+          feature_names=iris.feature_names,
+          class_names=iris.target_names,
+          filled=True,
+          rounded=True)
+plt.title(f"Tree {tree_index} in the Random Forest")
+plt.show()
+```
+
+You may also want to have a textual representation of the tree structure (easier to export than a graph in some cases):
+
+
+
+```shell
+# Print the text representation of the tree
+print(f"Text Representation of Tree {tree_index}:\n")
+print(export_text(rf_model.estimators_[tree_index], feature_names=iris.feature_names))
+```
+
+It can also be interesting to look at how the trees classify for a specific set of measurements (inference case). So let's take a sample from our dataset, and see how the trees voted. Here again, I pick a specific sample number (0), feel free to try a few numbers to see the votes in different cases: 
+
+
+```shell
+# Analyze how many trees voted for each class during inference
+# Pick a test sample for demonstration
+sample_index = 0  # Change this index to test different samples
+sample = X_test.iloc[sample_index].values.reshape(1, -1)
+
+# Get predictions from all trees
+tree_predictions = [tree.predict(sample)[0] for tree in rf_model.estimators_]
+
+# Count votes for each class
+votes = np.bincount(tree_predictions, minlength=len(iris.target_names))
+
+# Display voting results
+print(f"Sample {sample_index} Feature Values: {X_test.iloc[sample_index].values}")
+print(f"True Label: {iris.target_names[y_test[sample_index]]}")
+print(f"Predicted Label: {iris.target_names[rf_model.predict(sample)[0]]}")
+print("\nVotes from Individual Trees:")
+for class_idx, class_name in enumerate(iris.target_names):
+    print(f"{class_name}: {votes[class_idx]} votes")
+
+# Visualize votes as a bar chart
+plt.bar(iris.target_names, votes, color='skyblue')
+plt.title(f"Votes for Each Class (Sample {sample_index})")
+plt.ylabel("Number of Votes")
+plt.xlabel("Class")
+plt.show()
+```
 
 
 
