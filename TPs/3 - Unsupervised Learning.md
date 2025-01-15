@@ -490,7 +490,7 @@ print("DBSCAN Cluster Labels Count:")
 print(pd.Series(dbscan_labels).value_counts())
 ```
 
-In this case, it is pretty obvious that DBSCAN is the winner. DBSCAN usually wis when data is noisy and you see where the clusters 'should' be. But k-means wins in most of the other cases.
+In this case, it is pretty obvious that DBSCAN is the winner. DBSCAN usually wins when data is noisy and you see where the clusters 'should' be. But k-means wins in most of the other cases.
 
 
 
